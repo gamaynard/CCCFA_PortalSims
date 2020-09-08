@@ -236,12 +236,12 @@ server <- function(input,output){
     for(sim in 1:input$simulations){
       ## Read in the strings fished and discard values for the trip
       sf=stringsFished[sim]
-      d=discards[sim]
+      discs=discards[sim]
       ## sample the vector of real lengths to create a vector of discard lengths 
       ## for the trip
       tripDisc=sample(
         x=data$LENGTH,
-        size=d,
+        size=discs,
         replace=TRUE
       )
       ## assign each discard to a string based on input$DPS
@@ -251,32 +251,33 @@ server <- function(input,output){
         for(i in seq(1,sf-1,1)){
           strings[[i]]=sample(
             x=subset(
-              seq(1,d,1),
-              seq(1,d,1)%in%unlist(strings)==FALSE
+              seq(1,discs,1),
+              seq(1,discs,1)%in%unlist(strings)==FALSE
             ),
-            size=round(d/sf,0),
+            size=round(discs/sf,0),
             replace=FALSE
           )
         }
         ## The final string contains any remaining fish that have yet to be
         ## assigned
         strings[[sf]]=subset(
-          seq(1,d,1),
-          seq(1,d,1)%in%unlist(strings)==FALSE
+          seq(1,discs,1),
+          seq(1,discs,1)%in%unlist(strings)==FALSE
         )
       }
       ############### For skewed discards
+      a=discs
       if(input$DPS%in%c('skewed to first','skewed to last','skewed to mid')){
         for(i in seq(1,sf-1,1)){
-          if(d>0){
+          if(a>0){
             b=sample(
-              d,
+              a,
               1
             )
             strings[[i]]=sample(
               x=subset(
-                seq(1,d,1),
-                seq(1,d,1)%in%unlist(strings)==FALSE
+                seq(1,discs,1),
+                seq(1,discs,1)%in%unlist(strings)==FALSE
               ),
               size=b,
               replace=FALSE
@@ -287,12 +288,12 @@ server <- function(input,output){
           }
         }
         if(a>0){
-          strings[[input$sf]]=subset(
-            seq(1,input$d,1),
-            seq(1,input$d,1)%in%unlist(strings)==FALSE
+          strings[[sf]]=subset(
+            seq(1,discs,1),
+            seq(1,discs,1)%in%unlist(strings)==FALSE
           )
         } else {
-          strings[[input$sf]]=0
+          strings[[sf]]=0
         }
         if(input$DPS=='skewed to last'){
           strings=rev(strings)
@@ -331,20 +332,20 @@ server <- function(input,output){
         a=runif(sf,0,1)
         b=a/sum(a)
         b=round(b*d,0)
-        while(sum(b)>d){
+        while(sum(b)>discs){
           x=sample(1:sf,1)
           if(b[x]!=0){
             b[x]=b[x]-1
           }
         }
-        while(sum(b)<d){
+        while(sum(b)<discs){
           x=sample(1:sf,1)
           b[x]=b[x]+1
         }
         for(i in 1:sf){
           y=subset(
-            seq(1,d,1),
-            seq(1,d,1)%in%unlist(strings)==FALSE
+            seq(1,discs,1),
+            seq(1,discs,1)%in%unlist(strings)==FALSE
           )
           if(is.null(length(y))==FALSE){
             strings[[i]]=sample(
@@ -406,7 +407,7 @@ server <- function(input,output){
       
       ## Randomly subsample n discards from each trip if the number of discards
       ## is greater than the subsample size
-      if(d>input$samplesize){
+      if(discs>input$samplesize){
         RestS=sample(
           strings,
           input$samplesize,
@@ -431,7 +432,7 @@ server <- function(input,output){
       
       ## Subsample the first n discards from each trip if the number of discards
       ## is greater than the subsample size
-      if(d>input$samplesize){
+      if(discs>input$samplesize){
         FestS=strings[1:input$samplesize]
         FestF=stringsFirst[1:input$samplesize]
         FestM=stringsMid[1:input$samplesize]
@@ -445,19 +446,19 @@ server <- function(input,output){
       
       ## If the number of discards is greater than the subsample, produce an
       ## estimate, otherwise all fish are measured
-      if(d>input$samplesize){
+      if(discs>input$samplesize){
         ## For all estimates, the total weight of all subsampled fish is divided
         ## by the number of subsampled fish to get an average weight of the fish 
         ## in the subsample. The average is multiplied by the number of discards
         ## from the trip to estimate the weight of discards. 
-        RestS=sum(exp(lw$lnAlpha+lw$Beta*log(RestS))*2.204623)/input$samplesize*d
-        RestF=sum(exp(lw$lnAlpha+lw$Beta*log(RestF))*2.204623)/input$samplesize*d
-        RestM=sum(exp(lw$lnAlpha+lw$Beta*log(RestM))*2.204623)/input$samplesize*d
-        RestL=sum(exp(lw$lnAlpha+lw$Beta*log(RestL))*2.204623)/input$samplesize*d
-        FestS=sum(exp(lw$lnAlpha+lw$Beta*log(FestS))*2.204623)/input$samplesize*d
-        FestF=sum(exp(lw$lnAlpha+lw$Beta*log(FestF))*2.204623)/input$samplesize*d
-        FestM=sum(exp(lw$lnAlpha+lw$Beta*log(FestM))*2.204623)/input$samplesize*d
-        FestL=sum(exp(lw$lnAlpha+lw$Beta*log(FestL))*2.204623)/input$samplesize*d
+        RestS=sum(exp(lw$lnAlpha+lw$Beta*log(RestS))*2.204623)/input$samplesize*discs
+        RestF=sum(exp(lw$lnAlpha+lw$Beta*log(RestF))*2.204623)/input$samplesize*discs
+        RestM=sum(exp(lw$lnAlpha+lw$Beta*log(RestM))*2.204623)/input$samplesize*discs
+        RestL=sum(exp(lw$lnAlpha+lw$Beta*log(RestL))*2.204623)/input$samplesize*discs
+        FestS=sum(exp(lw$lnAlpha+lw$Beta*log(FestS))*2.204623)/input$samplesize*discs
+        FestF=sum(exp(lw$lnAlpha+lw$Beta*log(FestF))*2.204623)/input$samplesize*discs
+        FestM=sum(exp(lw$lnAlpha+lw$Beta*log(FestM))*2.204623)/input$samplesize*discs
+        FestL=sum(exp(lw$lnAlpha+lw$Beta*log(FestL))*2.204623)/input$samplesize*discs
       } else {
         RestS=kstrings
         RestF=kstrings
@@ -473,7 +474,7 @@ server <- function(input,output){
       results[sim,]=NA
       results$simNum[sim]=sim
       results$stringsFished[sim]=sf
-      results$discards[sim]=d
+      results$discards[sim]=discs
       results$known[sim]=kstrings
       results$RestR[sim]=RestS
       results$RestF[sim]=RestF
