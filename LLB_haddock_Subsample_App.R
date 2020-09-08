@@ -53,6 +53,13 @@ data$SPECIES=as.character(data$SPECIES)
 data$QUANTITY=as.numeric(as.character(data$QUANTITY))
 data$LENGTH=as.numeric(as.character(data$LENGTH))
 
+## Create a vector of lengths to use for demonstration purposes
+demo=sample(
+  data$LENGTH,
+  size=50,
+  replace=FALSE
+)
+
 ## "lw" contains the ln(alpha) and beta values necessary to estimate weights of 
 ## most groundfish species from lengths using the formula:
 ##    weight=exp(log(a)+b*log(length)) ## kg
@@ -134,6 +141,35 @@ ui <- fluidPage(
           title="README",
           helpText(
             "This is where the helpText goes."
+          )
+        ),
+        ## Simulation visualizer
+        ## This tab shows plots describing the scenario being run
+        tabPanel(
+          title="Simulation Descriptors",
+          helpText(
+            "This graphs below show the scenarios being simulated using the",
+            "average values for number of discards and strings fished as well as",
+            "the user specified parameters for subsampling and distribution of",
+            "discards. All scenarios being simulated will use the single discard",
+            "distribution selected (top graph) across strings (e.g., if 'random'",
+            " is selected, each simulation will have discards randomly assigned",
+            " to strings). All scenarios being simulated will test all four within",
+            " string distributions (bottom graphs). The same fish are rearranged on",
+            " the strings in each of the four distribution types before estimates",
+            " are calculated."
+          ),
+          plotOutput(
+            outputId='fishByString'
+          ),
+          fluidRow(
+            splitLayout(
+              cellWidths=c("23%","23%","23%","23%"),
+              plotOutput("RDisc"),
+              plotOutput("FDisc"),
+              plotOutput("MDisc"),
+              plotOutput("LDisc")
+            )
           )
         ),
         ## Results
@@ -453,6 +489,174 @@ server <- function(input,output){
   ## Finalize the dataframe for display
   output$results=renderTable({
     newResults()
+  })
+  ## Ouput graphical representations of a simulation using the average values
+  ## for discards and strings fished and the subsampling and distribution 
+  ## parameters entered by the user. 
+  output$fishByString=renderPlot({
+    sf=6
+    d=265
+    a=d
+    strings=list()
+    if(input$DPS=='random'){
+      a=runif(sf,0,1)
+      b=a/sum(a)
+      b=round(b*d,0)
+      while(sum(b)>d){
+        x=sample(1:sf,1)
+        if(b[x]!=0){
+          b[x]=b[x]-1
+        }
+      }
+      while(sum(b)<d){
+        x=sample(1:sf,1)
+        b[x]=b[x]+1
+      }
+    barplot(
+      b,
+      xlab="<-- First Hauled | String Order | Last Hauled -->",
+      ylab="Discards per String",
+      main="Discards Distributed Randomly Among Strings"
+      )
+    }
+    if(input$DPS=='even'){
+      strings=list()
+      for(i in seq(1,sf-1,1)){
+        strings[[i]]=sample(
+          x=subset(
+            seq(1,d,1),
+            seq(1,d,1)%in%unlist(strings)==FALSE
+          ),
+          size=round(d/sf,0),
+          replace=FALSE
+        )
+      }
+      ## The final string contains any remaining fish that have yet to be
+      ## assigned
+      strings[[sf]]=subset(
+        seq(1,d,1),
+        seq(1,d,1)%in%unlist(strings)==FALSE
+      )
+      barplot(
+        lengths(strings),
+        xlab="<-- First Hauled | String Order | Last Hauled -->",
+        ylab="Discards per String",
+        main="Discards Distributed Evenly Among Strings"
+      )
+    }
+    if(input$DPS%in%c('skewed to first','skewed to last','skewed to mid')){
+      for(i in seq(1,sf-1,1)){
+        if(d>0){
+          b=sample(
+            a,
+            1
+          )
+          strings[[i]]=sample(
+            x=subset(
+              seq(1,d,1),
+              seq(1,d,1)%in%unlist(strings)==FALSE
+            ),
+            size=b,
+            replace=FALSE
+          )
+          a=a-b
+        } else {
+          strings[[i]]=0
+        }
+      }
+      if(a>0){
+        strings[[sf]]=subset(
+          seq(1,d,1),
+          seq(1,d,1)%in%unlist(strings)==FALSE
+        )
+      } else {
+        strings[[sf]]=0
+      }
+      if(input$DPS=='skewed to last'){
+        strings=rev(strings)
+      }
+      if(input$DPS=='skewed to mid'){
+        a=strings
+        b=lengths(strings)
+        strings=list()
+        for(i in 1:length(a)){
+          strings[[i]]=0
+        }
+        h=order(b)
+        a=a[h]
+        e=round(sf/2,0)
+        strings[[e]]=a[[length(a)]]
+        a=a[-length(a)]
+        g=seq(1,sf,1)
+        for(i in seq(
+          1,
+          round(
+            length(
+              subset(g,g!=e)
+            )/2,0
+          ),
+          1)
+        ){
+          strings[[e-i]]=a[[length(a)]]
+          a=a[-length(a)]
+          strings[[e+i]]=a[[length(a)]]
+          a=a[-length(a)]
+        }
+      }
+      barplot(
+        lengths(strings),
+        xlab="<-- First Hauled | String Order | Last Hauled -->",
+        ylab="Discards per String",
+        main="Discards Skewed"
+      )
+    }
+  })
+  output$RDisc=renderPlot({
+    barplot(
+      demo,
+      xlab="<-- First Hauled",
+      ylab="Discard Length (cm)",
+      main="Random Distribution Within String"
+    )
+  })
+  output$FDisc=renderPlot({
+    barplot(
+      demo[order(
+        demo,
+        decreasing=TRUE
+      )],
+      xlab="| Haul "
+    )
+  })
+  output$LDisc=renderPlot({
+    barplot(
+      demo[order(
+        demo,
+        decreasing=FALSE
+      )],
+      xlab="Last Hauled -->"
+    )
+  })
+  output$MDisc=renderPlot({
+    e=ceiling(length(demo)/2)
+    a=demo[order(
+      demo,
+      decreasing=TRUE
+      )]
+    b=a
+    for(j in seq(1,e,1)){
+      b[j]=a[length(a)]
+      a=a[-length(a)]
+      if(length(a)>0){
+        b[length(b)-j]=a[length(a)]
+        a=a[-length(a)]
+      }
+    }
+    barplot(
+      b,
+      xlab="Order |",
+      main="Skewed Distributions Within Strings"
+    )
   })
 }
 ## Run application
