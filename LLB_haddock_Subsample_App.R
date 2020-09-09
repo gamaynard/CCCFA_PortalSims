@@ -212,7 +212,7 @@ server <- function(input,output){
     stringsFished=round(
       rtruncnorm(
         n=input$simulations,
-        a=1,
+        a=2,
         b=11,
         mean=6.9,
         sd=1.8
@@ -232,11 +232,20 @@ server <- function(input,output){
       ),
       0
     )
+    ## Threre must be at least as many discards as strings
+    for(i in 1:length(discards)){
+      if(discards[i]<stringsFished[i]){
+        discards[i]=stringsFished[i]
+      }
+    }
     ## For each simulation
     for(sim in 1:input$simulations){
-      ## Read in the strings fished and discard values for the trip
+      ### Read in the strings fished and discard values for the trip
       sf=stringsFished[sim]
       discs=discards[sim]
+      if(discs<sf){
+        discs=sf
+      }
       ## sample the vector of real lengths to create a vector of discard lengths 
       ## for the trip
       tripDisc=sample(
@@ -249,195 +258,203 @@ server <- function(input,output){
       ############### For evenly distributed discards
       if(input$DPS=='even'){
         for(i in seq(1,sf-1,1)){
-          strings[[i]]=sample(
-            x=subset(
-              seq(1,discs,1),
-              seq(1,discs,1)%in%unlist(strings)==FALSE
-            ),
-            size=round(discs/sf,0),
-            replace=FALSE
+          x=subset(
+            seq(1,discs,1),
+            seq(1,discs,1)%in%unlist(strings)==FALSE
           )
-        }
-        ## The final string contains any remaining fish that have yet to be
-        ## assigned
-        strings[[sf]]=subset(
-          seq(1,discs,1),
-          seq(1,discs,1)%in%unlist(strings)==FALSE
-        )
-      }
-      ############### For skewed discards
-      a=discs
-      if(input$DPS%in%c('skewed to first','skewed to last','skewed to mid')){
-        for(i in seq(1,sf-1,1)){
-          if(a>0){
-            b=sample(
-              a,
-              1
-            )
+          n=round(discs/sf,0)
+          if(identical(x,numeric(0))==FALSE){
+            if(n>length(x)){
+              n=length(x)
+            }
             strings[[i]]=sample(
-              x=subset(
-                seq(1,discs,1),
-                seq(1,discs,1)%in%unlist(strings)==FALSE
-              ),
-              size=b,
+              x=x,
+              size=n,
               replace=FALSE
             )
-            a=a-b
-          } else {
-            strings[[i]]=0
           }
-        }
-        if(a>0){
+          ## The final string contains any remaining fish that have yet to be
+          ## assigned
           strings[[sf]]=subset(
             seq(1,discs,1),
             seq(1,discs,1)%in%unlist(strings)==FALSE
           )
-        } else {
-          strings[[sf]]=0
-        }
-        if(input$DPS=='skewed to last'){
-          strings=rev(strings)
-        }
-        if(input$DPS=='skewed to mid'){
-          a=strings
-          b=lengths(strings)
-          strings=list()
-          for(i in 1:length(a)){
-            strings[[i]]=0
-          }
-          h=order(b)
-          a=a[h]
-          e=round(sf/2,0)
-          strings[[e]]=a[[length(a)]]
-          a=a[-length(a)]
-          g=seq(1,sf,1)
-          for(i in seq(
-            1,
-            round(
-              length(
-                subset(g,g!=e)
-              )/2,0
-            ),
-            1)
-          ){
-            strings[[e-i]]=a[[length(a)]]
-            a=a[-length(a)]
-            strings[[e+i]]=a[[length(a)]]
-            a=a[-length(a)]
-          }
         }
       }
-      ############### For random discards
-      if(input$DPS=='random'){
-        a=runif(sf,0,1)
-        b=a/sum(a)
-        b=round(b*d,0)
-        while(sum(b)>discs){
-          x=sample(1:sf,1)
-          if(b[x]!=0){
-            b[x]=b[x]-1
+        ############### For skewed discards
+        a=discs
+        if(input$DPS%in%c('skewed to first','skewed to last','skewed to mid')){
+          for(i in seq(1,sf-1,1)){
+            if(a>0){
+              b=sample(
+                a,
+                1
+              )
+              strings[[i]]=sample(
+                x=subset(
+                  seq(1,discs,1),
+                  seq(1,discs,1)%in%unlist(strings)==FALSE
+                ),
+                size=b,
+                replace=FALSE
+              )
+              a=a-b
+            } else {
+              strings[[i]]=0
+            }
           }
-        }
-        while(sum(b)<discs){
-          x=sample(1:sf,1)
-          b[x]=b[x]+1
-        }
-        for(i in 1:sf){
-          y=subset(
-            seq(1,discs,1),
-            seq(1,discs,1)%in%unlist(strings)==FALSE
-          )
-          if(is.null(length(y))==FALSE){
-            strings[[i]]=sample(
-              x=y,
-              size=b[i],
-              replace=FALSE
+          if(a>0){
+            strings[[sf]]=subset(
+              seq(1,discs,1),
+              seq(1,discs,1)%in%unlist(strings)==FALSE
             )
+          } else {
+            strings[[sf]]=0
           }
-        }
-        strings[sapply(strings, function(strings) length(strings)==0)]=0
-      }
-      for(i in 1:length(strings)){
-        if(strings[[i]][1]==0){
-          strings[[i]]=NA
-        } else {
-          strings[[i]]=tripDisc[strings[[i]]]
-        }
-      }
-      ## Within each string, discards can be distributed randomly, or larger 
-      ## discards could be biased to the middle, or biased towards one end. 
-      ## The script tests all of these scenarios and displays the results
-      ## Clear all strings with no discards
-      strings=subset(strings,is.na(strings)==FALSE)
-      stringsMid=strings
-      stringsFirst=strings
-      stringsLast=strings
-      for(i in 1:length(strings)){
-        stringsFirst[[i]]=rev(strings[[i]][order(strings[[i]])])
-        stringsLast[[i]]=strings[[i]][order(strings[[i]])]
-        a=stringsMid[[i]]
-        b=which(a==max(a))[1]
-        d1=a[b]
-        e=round(length(stringsMid[[i]])/2,0)
-        a=a[-b]
-        a=a[order(a)]
-        stringsMid[[i]][e]=d1
-        if(length(stringsMid[[i]])>1){
-          for(j in seq(1,e,1)){
-            if(length(stringsMid[[i]])>=(e+j)){
-              stringsMid[[i]][e+j]=a[length(a)]
-              a=a[-length(a)]
-              if((e-j)>0){
-                stringsMid[[i]][e-j]=a[length(a)]
+          if(input$DPS=='skewed to last'){
+            strings=rev(strings)
+          }
+          if(input$DPS=='skewed to mid'){
+            a=strings
+            b=lengths(strings)
+            strings=list()
+            for(i in 1:length(a)){
+              strings[[i]]=0
+            }
+            h=order(b)
+            a=a[h]
+            e=ceiling(sf/2)
+            strings[[e]]=a[[length(a)]]
+            a=a[-length(a)]
+            g=seq(1,sf,1)
+            for(i in seq(1,
+              round(
+                length(
+                  subset(g,g!=e)
+                )/2,0
+              ),
+              1)
+            ){
+              if((e-i)!=0){
+                strings[[e-i]]=a[[length(a)]]
+                a=a[-length(a)]
+                strings[[e+i]]=a[[length(a)]]
                 a=a[-length(a)]
               }
             }
           }
         }
-      }
-      ## Create a vector to represent the trip under each of the the 4 conditions
-      ## Randomly distributed lengths within strings
-      strings=unlist(strings)
-      ## Large fish towards the first part of the strings
-      stringsFirst=unlist(stringsFirst)
-      ## Large fish in the middle of the strings
-      stringsMid=unlist(stringsMid)
-      ## Large fish towards the end of the strings
-      stringsLast=unlist(stringsLast)
-      
-      ## Randomly subsample n discards from each trip if the number of discards
-      ## is greater than the subsample size
-      if(discs>input$samplesize){
-        RestS=sample(
-          strings,
-          input$samplesize,
-          replace=FALSE
-        )
-        RestF=sample(
-          stringsFirst,
-          input$samplesize,
-          replace=FALSE
-        )
-        RestM=sample(
-          stringsMid,
-          input$samplesize,
-          replace=FALSE
-        )
-        RestL=sample(
-          stringsLast,
-          input$samplesize,
-          replace=FALSE
-        )
-      } 
-      
-      ## Subsample the first n discards from each trip if the number of discards
-      ## is greater than the subsample size
-      if(discs>input$samplesize){
-        FestS=strings[1:input$samplesize]
-        FestF=stringsFirst[1:input$samplesize]
-        FestM=stringsMid[1:input$samplesize]
-        FestL=stringsLast[1:input$samplesize]
-      } 
+        ############### For random discards
+        if(input$DPS=='random'){
+          a=runif(sf,0,1)
+          b=a/sum(a)
+          b=round(b*discs,0)
+          while(sum(b)>discs){
+            x=sample(1:sf,1)
+            if(b[x]!=0){
+              b[x]=b[x]-1
+            }
+          }
+          while(sum(b)<discs){
+            x=sample(1:sf,1)
+            b[x]=b[x]+1
+          }
+          for(i in 1:sf){
+            y=subset(
+              seq(1,discs,1),
+              seq(1,discs,1)%in%unlist(strings)==FALSE
+            )
+            if(is.null(length(y))==FALSE){
+              strings[[i]]=sample(
+                x=y,
+                size=b[i],
+                replace=FALSE
+              )
+            }
+          }
+          strings[sapply(strings, function(strings) length(strings)==0)]=0
+        }
+        for(i in 1:length(strings)){
+          if(strings[[i]][1]==0){
+            strings[[i]]=NA
+          } else {
+            strings[[i]]=tripDisc[strings[[i]]]
+          }
+        }
+        ## Within each string, discards can be distributed randomly, or larger 
+        ## discards could be biased to the middle, or biased towards one end. 
+        ## The script tests all of these scenarios and displays the results
+        ## Clear all strings with no discards
+        strings=subset(strings,is.na(strings)==FALSE)
+        stringsMid=strings
+        stringsFirst=strings
+        stringsLast=strings
+        for(i in 1:length(strings)){
+          stringsFirst[[i]]=rev(strings[[i]][order(strings[[i]])])
+          stringsLast[[i]]=strings[[i]][order(strings[[i]])]
+          a=stringsMid[[i]]
+          b=which(a==max(a))[1]
+          d1=a[b]
+          e=round(length(stringsMid[[i]])/2,0)
+          a=a[-b]
+          a=a[order(a)]
+          stringsMid[[i]][e]=d1
+          if(length(stringsMid[[i]])>1){
+            for(j in seq(1,e,1)){
+              if(length(stringsMid[[i]])>=(e+j)){
+                stringsMid[[i]][e+j]=a[length(a)]
+                a=a[-length(a)]
+                if((e-j)>0){
+                  stringsMid[[i]][e-j]=a[length(a)]
+                  a=a[-length(a)]
+                }
+              }
+            }
+          }
+        }
+        ## Create a vector to represent the trip under each of the the 4 conditions
+        ## Randomly distributed lengths within strings
+        strings=unlist(strings)
+        ## Large fish towards the first part of the strings
+        stringsFirst=unlist(stringsFirst)
+        ## Large fish in the middle of the strings
+        stringsMid=unlist(stringsMid)
+        ## Large fish towards the end of the strings
+        stringsLast=unlist(stringsLast)
+        
+        ## Randomly subsample n discards from each trip if the number of discards
+        ## is greater than the subsample size
+        if(discs>input$samplesize){
+          RestS=sample(
+            strings,
+            input$samplesize,
+            replace=FALSE
+          )
+          RestF=sample(
+            stringsFirst,
+            input$samplesize,
+            replace=FALSE
+          )
+          RestM=sample(
+            stringsMid,
+            input$samplesize,
+            replace=FALSE
+          )
+          RestL=sample(
+            stringsLast,
+            input$samplesize,
+            replace=FALSE
+          )
+        } 
+        
+        ## Subsample the first n discards from each trip if the number of discards
+        ## is greater than the subsample size
+        if(discs>input$samplesize){
+          FestS=strings[1:input$samplesize]
+          FestF=stringsFirst[1:input$samplesize]
+          FestM=stringsMid[1:input$samplesize]
+          FestL=stringsLast[1:input$samplesize]
+        }
       
       ## Convert lengths to weights to calculate simulated true (known) values
       ## for each trip. Trips should have the same known weight, regardless of
