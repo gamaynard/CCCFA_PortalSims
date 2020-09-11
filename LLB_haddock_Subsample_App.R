@@ -180,6 +180,11 @@ ui <- fluidPage(
         ),
         tabPanel(
           title="Text Results",
+          downloadButton(
+            outputId="textDownload",
+            label="Download Simulation Outputs",
+            col='gray'
+          ),
           tableOutput(
             "results"
             )
@@ -671,6 +676,14 @@ server <- function(input,output){
       main="Skewed Distributions Within Strings"
     )
   })
+  output$textDownload=downloadHandler(
+    filename=function(){
+      paste0("Results_SampleSize",input$samplesize,"_DPS_",input$DPS,".csv")
+    },
+    content=function(file){
+      write.csv(newResults(),file,row.names=FALSE)
+    }
+  )
 }
 ## Run application
 shinyApp(ui=ui,server=server)
