@@ -212,7 +212,7 @@ server <- function(input,output){
     stringsFished=round(
       rtruncnorm(
         n=input$simulations,
-        a=2,
+        a=3,
         b=11,
         mean=6.9,
         sd=1.8
@@ -328,10 +328,10 @@ server <- function(input,output){
             a=a[-length(a)]
             g=seq(1,sf,1)
             for(i in seq(1,
-              round(
+              ceiling(
                 length(
                   subset(g,g!=e)
-                )/2,0
+                )/2
               ),
               1)
             ){
@@ -602,21 +602,23 @@ server <- function(input,output){
         }
         h=order(b)
         a=a[h]
-        e=round(sf/2,0)
+        e=ceiling(sf/2)
         strings[[e]]=a[[length(a)]]
         a=a[-length(a)]
         g=seq(1,sf,1)
         for(i in seq(
           1,
-          round(
+          ceiling(
             length(
               subset(g,g!=e)
-            )/2,0
+            )/2
           ),
           1)
         ){
-          strings[[e-i]]=a[[length(a)]]
-          a=a[-length(a)]
+          if((e-i)>0){
+            strings[[e-i]]=a[[length(a)]]
+            a=a[-length(a)]
+          }
           strings[[e+i]]=a[[length(a)]]
           a=a[-length(a)]
         }
