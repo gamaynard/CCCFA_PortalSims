@@ -257,33 +257,19 @@ server <- function(input,output){
       strings=list()
       ############### For evenly distributed discards
       if(input$DPS=='even'){
-        for(i in seq(1,sf-1,1)){
-          x=subset(
-            seq(1,discs,1),
-            seq(1,discs,1)%in%unlist(strings)==FALSE
-          )
-          n=round(discs/sf,0)
-          if(identical(x,numeric(0))==FALSE){
-            if(n>length(x)){
-              n=length(x)
-            }
-            strings[[i]]=sample(
-              x=x,
-              size=n,
-              replace=FALSE
+        strings=split(
+          x=tripDisc,
+          f=ceiling(
+            seq(
+              from=1,
+              to=sf
+              )
             )
-          }
-          ## The final string contains any remaining fish that have yet to be
-          ## assigned
-          strings[[sf]]=subset(
-            seq(1,discs,1),
-            seq(1,discs,1)%in%unlist(strings)==FALSE
           )
         }
-      }
-        ############### For skewed discards
-        a=discs
-        if(input$DPS%in%c('skewed to first','skewed to last','skewed to mid')){
+      ############### For skewed discards
+      a=discs
+      if(input$DPS%in%c('skewed to first','skewed to last','skewed to mid')){
           for(i in seq(1,sf-1,1)){
             if(a>0){
               b=sample(
@@ -343,9 +329,16 @@ server <- function(input,output){
               }
             }
           }
+          for(i in 1:length(strings)){
+            if(strings[[i]][1]==0){
+              strings[[i]]=NA
+            } else {
+              strings[[i]]=tripDisc[strings[[i]]]
+            }
+          }
         }
-        ############### For random discards
-        if(input$DPS=='random'){
+      ############### For random discards
+      if(input$DPS=='random'){
           a=runif(sf,0,1)
           b=a/sum(a)
           b=round(b*discs,0)
@@ -373,23 +366,23 @@ server <- function(input,output){
             }
           }
           strings[sapply(strings, function(strings) length(strings)==0)]=0
-        }
-        for(i in 1:length(strings)){
-          if(strings[[i]][1]==0){
-            strings[[i]]=NA
-          } else {
-            strings[[i]]=tripDisc[strings[[i]]]
+          for(i in 1:length(strings)){
+            if(strings[[i]][1]==0){
+              strings[[i]]=NA
+            } else {
+              strings[[i]]=tripDisc[strings[[i]]]
+            }
           }
         }
-        ## Within each string, discards can be distributed randomly, or larger 
-        ## discards could be biased to the middle, or biased towards one end. 
-        ## The script tests all of these scenarios and displays the results
-        ## Clear all strings with no discards
-        strings=subset(strings,is.na(strings)==FALSE)
-        stringsMid=strings
-        stringsFirst=strings
-        stringsLast=strings
-        for(i in 1:length(strings)){
+      ## Within each string, discards can be distributed randomly, or larger 
+      ## discards could be biased to the middle, or biased towards one end. 
+      ## The script tests all of these scenarios and displays the results
+      ## Clear all strings with no discards
+      strings=subset(strings,is.na(strings)==FALSE)
+      stringsMid=strings
+      stringsFirst=strings
+      stringsLast=strings
+      for(i in 1:length(strings)){
           stringsFirst[[i]]=rev(strings[[i]][order(strings[[i]])])
           stringsLast[[i]]=strings[[i]][order(strings[[i]])]
           a=stringsMid[[i]]
@@ -412,19 +405,19 @@ server <- function(input,output){
             }
           }
         }
-        ## Create a vector to represent the trip under each of the the 4 conditions
-        ## Randomly distributed lengths within strings
-        strings=unlist(strings)
-        ## Large fish towards the first part of the strings
-        stringsFirst=unlist(stringsFirst)
-        ## Large fish in the middle of the strings
-        stringsMid=unlist(stringsMid)
-        ## Large fish towards the end of the strings
-        stringsLast=unlist(stringsLast)
+      ## Create a vector to represent the trip under each of the the 4 conditions
+      ## Randomly distributed lengths within strings
+      strings=unlist(strings)
+      ## Large fish towards the first part of the strings
+      stringsFirst=unlist(stringsFirst)
+      ## Large fish in the middle of the strings
+      stringsMid=unlist(stringsMid)
+      ## Large fish towards the end of the strings
+      stringsLast=unlist(stringsLast)
         
-        ## Randomly subsample n discards from each trip if the number of discards
-        ## is greater than the subsample size
-        if(discs>input$samplesize){
+      ## Randomly subsample n discards from each trip if the number of discards
+      ## is greater than the subsample size
+      if(discs>input$samplesize){
           RestS=sample(
             strings,
             input$samplesize,
@@ -447,9 +440,9 @@ server <- function(input,output){
           )
         } 
         
-        ## Subsample the first n discards from each trip if the number of discards
-        ## is greater than the subsample size
-        if(discs>input$samplesize){
+      ## Subsample the first n discards from each trip if the number of discards
+      ## is greater than the subsample size
+      if(discs>input$samplesize){
           FestS=strings[1:input$samplesize]
           FestF=stringsFirst[1:input$samplesize]
           FestM=stringsMid[1:input$samplesize]
