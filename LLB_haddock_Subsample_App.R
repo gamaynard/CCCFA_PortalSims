@@ -108,7 +108,7 @@ ui <- fluidPage(
         min=10,
         max=10000,
         step=10,
-        value=1000
+        value=100
       ),
       ## Select a number of subsamples to collect per trip
       sliderInput(
@@ -175,8 +175,36 @@ ui <- fluidPage(
         ## Results
         tabPanel(
           title="Graphical Results",
+          helpText(
+            "The four graphs below show estimated weights for each simulated trip.",
+            "If weights are estimated using a 'Random n' subsampling method, the",
+            "points are orange circles. If weights are estimated using a 'First n'",
+            "subsampling method, the points are blue X's. The dashed black line",
+            "is the 1:1, estimate:known (perfect match) line. Orange text in the figures",
+            "(left hand column) gives summary statistics for the 'Random n'",
+            "subsamples. Blue text in the figures (right hand column) gives summary",
+            "statistics for the 'First n' subsamples. 'p' indicates the proportion",
+            "of the estimates that fall above the known values (closer to 0.5 is better).",
+            "Total error is the sum of the absolute (non-negative) errors across",
+            "all simulated trips (e.g., three trips with errors of 5 lbs, -5 lbs,",
+            "and 8 lbs would have a total error of 18 lbs). Average error is the",
+            "total error divided by the number of simulated trips."
+          ),
           ## Plot outputs
-          plotOutput("plot1")
+          fluidRow(
+            splitLayout(
+              cellWidths=c("48%","48%"),
+              plotOutput("RandomPlot"),
+              plotOutput("FirstPlot")
+            )
+          ),
+          fluidRow(
+            splitLayout(
+              cellWidths=c("48%","48%"),
+              plotOutput("MidPlot"),
+              plotOutput("LastPlot")
+            )
+          )
         ),
         tabPanel(
           title="Text Results",
@@ -684,6 +712,206 @@ server <- function(input,output){
       write.csv(newResults(),file,row.names=FALSE)
     }
   )
+  output$RandomPlot=renderPlot({
+    x=newResults()
+    plot(
+      x$RestR~x$known,
+      xlim=c(0,1200),
+      ylim=c(0,1200),
+      col='orange',
+      pch=1,
+      xlab="Known Weight (lbs)",
+      ylab="Estimated Weight (lbs)",
+      main="Random Lengths Within Strings"
+      )
+    points(
+      x$FestR~x$known,
+      pch=4,
+      col='blue'
+    )
+    lines(
+      seq(0,1200,1)~seq(0,1200,1),
+      lty=2
+      )
+    legend(
+      "topleft",
+      legend=c("Random n","First n"),
+      col=c('orange','blue'),
+      pch=c(1,4)
+    )
+    yR=abs(x$RestR-x$known)
+    yF=abs(x$FestR-x$known)
+    text(
+      x=rep(600,3),
+      y=c(200,150,100),
+      labels=c(
+        paste0("p = ",round(nrow(subset(x,x$RestR>x$known))/nrow(x),2)),
+        paste0("Total Error = ",round(sum(yR),1)," lbs"),
+        paste0("Avg. Error = ",round(mean(yR),1)," lbs")
+      ),
+      col='orange'
+    )
+    text(
+      x=rep(1000,3),
+      y=c(200,150,100),
+      labels=c(
+        paste0("p = ",round(nrow(subset(x,x$FestR>x$known))/nrow(x),2)),
+        paste0("Total Error = ",round(sum(yF),1)," lbs"),
+        paste0("Avg. Error = ",round(mean(yF),1)," lbs")
+      ),
+      col='blue'
+    )
+  })
+  output$FirstPlot=renderPlot({
+    x=newResults()
+    plot(
+      x$RestF~x$known,
+      xlim=c(0,1200),
+      ylim=c(0,1200),
+      col='orange',
+      pch=1,
+      xlab="Known Weight (lbs)",
+      ylab="Estimated Weight (lbs)",
+      main="Large Fish First"
+    )
+    points(
+      x$FestF~x$known,
+      pch=4,
+      col='blue'
+    )
+    lines(
+      seq(0,1200,1)~seq(0,1200,1),
+      lty=2
+    )
+    legend(
+      "topleft",
+      legend=c("Random n","First n"),
+      col=c('orange','blue'),
+      pch=c(1,4)
+    )
+    yR=abs(x$RestF-x$known)
+    yF=abs(x$FestF-x$known)
+    text(
+      x=rep(600,3),
+      y=c(200,150,100),
+      labels=c(
+        paste0("p = ",round(nrow(subset(x,x$RestF>x$known))/nrow(x),2)),
+        paste0("Total Error = ",round(sum(yR),1)," lbs"),
+        paste0("Avg. Error = ",round(mean(yR),1)," lbs")
+      ),
+      col='orange'
+    )
+    text(
+      x=rep(1000,3),
+      y=c(200,150,100),
+      labels=c(
+        paste0("p = ",round(nrow(subset(x,x$FestF>x$known))/nrow(x),2)),
+        paste0("Total Error = ",round(sum(yF),1)," lbs"),
+        paste0("Avg. Error = ",round(mean(yF),1)," lbs")
+      ),
+      col='blue'
+    )
+  })
+  output$MidPlot=renderPlot({
+    x=newResults()
+    plot(
+      x$RestM~x$known,
+      xlim=c(0,1200),
+      ylim=c(0,1200),
+      col='orange',
+      pch=1,
+      xlab="Known Weight (lbs)",
+      ylab="Estimated Weight (lbs)",
+      main="Large Fish Mid"
+    )
+    points(
+      x$FestM~x$known,
+      pch=4,
+      col='blue'
+    )
+    lines(
+      seq(0,1200,1)~seq(0,1200,1),
+      lty=2
+    )
+    legend(
+      "topleft",
+      legend=c("Random n","First n"),
+      col=c('orange','blue'),
+      pch=c(1,4)
+    )
+    yR=abs(x$RestM-x$known)
+    yF=abs(x$FestM-x$known)
+    text(
+      x=rep(600,3),
+      y=c(200,150,100),
+      labels=c(
+        paste0("p = ",round(nrow(subset(x,x$RestM>x$known))/nrow(x),2)),
+        paste0("Total Error = ",round(sum(yR),1)," lbs"),
+        paste0("Avg. Error = ",round(mean(yR),1)," lbs")
+      ),
+      col='orange'
+    )
+    text(
+      x=rep(1000,3),
+      y=c(200,150,100),
+      labels=c(
+        paste0("p = ",round(nrow(subset(x,x$FestM>x$known))/nrow(x),2)),
+        paste0("Total Error = ",round(sum(yF),1)," lbs"),
+        paste0("Avg. Error = ",round(mean(yF),1)," lbs")
+      ),
+      col='blue'
+    )
+  })
+  output$LastPlot=renderPlot({
+    x=newResults()
+    plot(
+      x$RestL~x$known,
+      xlim=c(0,1200),
+      ylim=c(0,1200),
+      col='orange',
+      pch=1,
+      xlab="Known Weight (lbs)",
+      ylab="Estimated Weight (lbs)",
+      main="Large Fish Last"
+    )
+    points(
+      x$FestL~x$known,
+      pch=4,
+      col='blue'
+    )
+    lines(
+      seq(0,1200,1)~seq(0,1200,1),
+      lty=2
+    )
+    legend(
+      "topleft",
+      legend=c("Random n","First n"),
+      col=c('orange','blue'),
+      pch=c(1,4)
+    )
+    yR=abs(x$RestL-x$known)
+    yF=abs(x$FestL-x$known)
+    text(
+      x=rep(600,3),
+      y=c(200,150,100),
+      labels=c(
+        paste0("p = ",round(nrow(subset(x,x$RestL>x$known))/nrow(x),2)),
+        paste0("Total Error = ",round(sum(yR),1)," lbs"),
+        paste0("Avg. Error = ",round(mean(yR),1)," lbs")
+      ),
+      col='orange'
+    )
+    text(
+      x=rep(1000,3),
+      y=c(200,150,100),
+      labels=c(
+        paste0("p = ",round(nrow(subset(x,x$FestL>x$known))/nrow(x),2)),
+        paste0("Total Error = ",round(sum(yF),1)," lbs"),
+        paste0("Avg. Error = ",round(mean(yF),1)," lbs")
+      ),
+      col='blue'
+    )
+  })
 }
 ## Run application
 shinyApp(ui=ui,server=server)
